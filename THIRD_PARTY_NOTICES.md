@@ -37,10 +37,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## JSZip (MIT) — https://stuk.github.io/jszip/
-
-Loaded from cdnjs at runtime to unpack repo tarballs in the browser.
-
 ## Ajv (MIT) — https://ajv.js.org/
 
 Loaded from jsDelivr at runtime to validate specs against the vendored
