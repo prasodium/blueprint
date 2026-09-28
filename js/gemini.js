@@ -1,6 +1,6 @@
 /* Blueprint — Gemini REST client. Browser -> Google directly, key via header only. */
 
-export const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
+export const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 function extractText(data) {
@@ -36,6 +36,7 @@ export async function generateSpec({ apiKey, systemPrompt, userPrompt, signal })
     generationConfig: { responseMimeType: "application/json", temperature: 0.2, maxOutputTokens: 16384 },
   };
   let lastErr = null;
+  const failures = [];
   for (const model of GEMINI_MODELS) {
     const res = await fetch(`${API_BASE}/${model}:generateContent`, {
       method: "POST",
@@ -46,7 +47,13 @@ export async function generateSpec({ apiKey, systemPrompt, userPrompt, signal })
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       const friendly = friendlyError(res.status, data);
-      if (friendly === "MODEL_NOT_FOUND") { lastErr = new Error(`Model ${model} not available, trying fallback…`); continue; }
+      // 404 = model retired for this key; 503 = model overloaded right now.
+      // Either way, try the next model instead of failing the whole run.
+      if (friendly === "MODEL_NOT_FOUND" || res.status === 503) {
+        failures.push(`${model} (${res.status === 503 ? "overloaded" : "not available for this key"})`);
+        lastErr = new Error(`Model ${model} ${res.status === 503 ? "is overloaded" : "isn't available for this key"}, trying next…`);
+        continue;
+      }
       throw new Error(friendly);
     }
     const text = extractText(data);
@@ -57,5 +64,9 @@ export async function generateSpec({ apiKey, systemPrompt, userPrompt, signal })
       throw new Error("Gemini returned text that wasn't valid JSON. Try again — it usually works on retry.");
     }
   }
-  throw lastErr || new Error("No Gemini model responded. Try again later.");
+  throw new Error(
+    lastErr
+      ? `Gemini couldn't generate right now (${failures.join("; ")}). The free tier may be busy — wait a minute and try again.`
+      : "No Gemini model responded. Try again later."
+  );
 }
