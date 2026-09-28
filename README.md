@@ -14,7 +14,7 @@ database, no signup, no tracking. Everything runs in the visitor's browser:
 | Piece | How it's free |
 |---|---|
 | Hosting | Any static host: GitHub Pages, Cloudflare Pages |
-| Repo reading | Browser downloads the public repo zip from `codeload.github.com` and distills it locally (JSZip) |
+| Repo reading | Browser lists repo files via the GitHub API and fetches raw file contents from `raw.githubusercontent.com`, distilling them locally — no backend |
 | The AI | The visitor pastes their own **free** Gemini API key (Google AI Studio, no credit card). Calls go browser → Google directly |
 | Validation | Real Archify JSON schemas, checked in-browser with a bundled Ajv |
 | Rendering | Custom SVG renderer (no build step, no dependencies) |
