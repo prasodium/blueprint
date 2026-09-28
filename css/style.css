@@ -29,7 +29,7 @@ a:hover { color: var(--accent); }
 header.top {
   background: var(--paper2);
   border-top: 5px solid var(--accent);
-  border-bottom: 4px double var(--ink);
+  border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 50;
 }
 .top-inner { display: flex; align-items: center; gap: 13px; padding: 12px 22px; max-width: 1060px; margin: 0 auto; }
@@ -45,7 +45,7 @@ header.top {
 /* ---------- buttons + inputs ---------- */
 button { font: inherit; cursor: pointer; }
 .btn {
-  border: 1.5px solid var(--ink); background: var(--paper2); color: var(--ink);
+  border: 1px solid var(--ink); background: var(--paper2); color: var(--ink);
   border-radius: 3px; padding: 8px 15px; font-weight: 700; font-size: 13px;
 }
 .btn:hover { background: var(--accent-soft); }
@@ -67,12 +67,12 @@ label.lbl {
 label.lbl .opt { font-weight: 400; letter-spacing: 0; }
 
 /* ---------- hero ---------- */
-.hero { padding: 40px 0 8px; }
+.hero { padding: 44px 0 8px; text-align: center; }
 .kicker { font-size: 12px; font-weight: 700; letter-spacing: 2.5px; color: var(--accent-deep); margin: 0 0 12px; }
 .hero h2 { font-size: clamp(24px, 4vw, 36px); margin: 0 0 10px; font-weight: 800; letter-spacing: -0.5px; }
 .hero h2 .hl { border-bottom: 5px solid var(--accent); }
 .hero p.sub { color: var(--ash); font-size: 14px; margin: 0 auto 28px; max-width: 620px; }
-.panel { background: var(--paper2); border: 1.5px solid var(--ink); border-radius: 3px; padding: 24px; }
+.panel { background: var(--paper2); border: 1px solid var(--line); border-radius: 3px; padding: 24px; text-align: left; }
 .generator { max-width: 720px; margin: 0 auto; }
 .field { margin-bottom: 16px; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -96,20 +96,19 @@ label.lbl .opt { font-weight: 400; letter-spacing: 0; }
 /* ---------- error ---------- */
 #errorbox {
   max-width: 720px; margin: 20px auto 0; background: var(--paper2);
-  border: 1.5px solid var(--bad); border-radius: 3px; padding: 16px 20px;
+  border: 1px solid var(--bad); border-radius: 3px; padding: 16px 20px;
 }
 #errorbox ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
 #errorbox li { margin-bottom: 4px; word-break: break-word; }
 
 /* ---------- diagram ---------- */
 #diagram-section { margin: 32px 0 8px; }
-.dhead { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 12px;
-  border-bottom: 4px double var(--ink); padding-bottom: 10px; }
+.dhead { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
 .dhead h3 { margin: 0; font-size: 20px; font-weight: 800; }
 .dhead .meta { color: var(--ash); font-size: 13px; }
 #toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
 #toolbar .sep { width: 1px; height: 22px; background: var(--ash2); margin: 0 4px; }
-.stage { position: relative; border: 1.5px solid var(--ink); border-radius: 3px; overflow: hidden; background: var(--paper2); }
+.stage { position: relative; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; background: var(--paper2); }
 #viewport { width: 100%; height: min(72vh, 640px); overflow: hidden; touch-action: none; }
 #viewport .svgwrap, #viewport svg { width: 100%; height: 100%; display: block; }
 #bp-svg { cursor: grab; }
@@ -117,8 +116,8 @@ label.lbl .opt { font-weight: 400; letter-spacing: 0; }
 #bp-svg .bp-node:hover rect { filter: brightness(0.96); }
 #nodedetail {
   position: absolute; top: 14px; right: 14px; width: 280px; max-height: 80%; overflow: auto;
-  background: var(--paper2); border: 1.5px solid var(--ink); border-radius: 3px;
-  padding: 16px 18px; box-shadow: 6px 6px 0 var(--line); z-index: 5;
+  background: var(--paper2); border: 1px solid var(--line); border-radius: 3px;
+  padding: 16px 18px; z-index: 5;
 }
 #nodedetail .x { position: absolute; top: 8px; right: 12px; background: none; border: none; color: var(--ash); font-size: 20px; }
 #nodedetail h4 { margin: 0 0 4px; font-size: 15px; }
@@ -134,7 +133,7 @@ label.lbl .opt { font-weight: 400; letter-spacing: 0; }
 
 /* ---------- cards ---------- */
 #cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 14px; }
-.bp-card { background: var(--paper2); border: 1px solid var(--ash2); border-radius: 3px; padding: 14px 16px; }
+.bp-card { background: var(--paper2); border: 1px solid var(--line); border-radius: 3px; padding: 14px 16px; }
 .bp-card-head { display: flex; align-items: center; gap: 9px; font-weight: 700; margin-bottom: 8px; font-size: 13.5px; }
 .bp-dot { width: 10px; height: 10px; flex: none; }
 .bp-card ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--ash); }
@@ -152,10 +151,14 @@ label.lbl .opt { font-weight: 400; letter-spacing: 0; }
 .examples button:hover { color: var(--ink); border-color: var(--ink); }
 
 /* ---------- how it works ---------- */
-.how { margin: 52px 0; border-top: 4px double var(--ink); padding-top: 26px; }
-.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0; border: 1.5px solid var(--ink); border-radius: 3px; overflow: hidden; }
-.step { background: var(--paper2); padding: 20px; border-left: 1px solid var(--line); }
-.step:first-child { border-left: none; }
+.how { margin: 56px 0; padding-top: 8px; text-align: center; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0; max-width: 860px; margin: 26px auto 0; text-align: left; }
+.step { background: transparent; padding: 6px 22px; border-left: 1px solid var(--line); }
+.step:first-child { border-left: none; padding-left: 0; }
+@media (max-width: 640px) {
+  .step { border-left: none; border-top: 1px solid var(--line); padding: 16px 0; }
+  .step:first-child { border-top: none; padding-top: 0; }
+}
 .step .n { display: inline-block; background: var(--accent); color: var(--ink); font-weight: 800; font-size: 13px; padding: 2px 9px; margin-bottom: 12px; }
 .step h4 { margin: 0 0 6px; font-size: 15px; }
 .step p { margin: 0; font-size: 13px; color: var(--ash); }
@@ -163,12 +166,12 @@ label.lbl .opt { font-weight: 400; letter-spacing: 0; }
 .cost strong { color: var(--accent-deep); }
 
 /* ---------- footer ---------- */
-footer { border-top: 4px double var(--ink); margin-top: 36px; padding: 22px 0 36px; color: var(--ash); font-size: 12.5px; }
+footer { margin-top: 40px; padding: 24px 0 40px; color: var(--ash); font-size: 12.5px; }
 footer .wrap { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
 
 /* ---------- modal ---------- */
 .modal-back { position: fixed; inset: 0; background: rgba(26, 23, 18, .45); display: grid; place-items: center; z-index: 100; padding: 20px; }
-.modal { background: var(--paper2); border: 2px solid var(--ink); border-radius: 4px; padding: 26px; max-width: 460px; width: 100%; box-shadow: 8px 8px 0 var(--line); }
+.modal { background: var(--paper2); border: 1px solid var(--ink); border-radius: 4px; padding: 26px; max-width: 460px; width: 100%; }
 .modal h3 { margin: 0 0 8px; font-size: 17px; }
 .modal p { font-size: 13px; color: var(--ash); }
 .modal .field { margin: 14px 0; }
