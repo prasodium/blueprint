@@ -1,8 +1,15 @@
-/* Blueprint — GitHub ingestion: parse URL, fetch tarball from codeload, unzip, distill.
-   All client-side. Pure functions are exported for testability. */
+/* Blueprint — GitHub ingestion: list files via the GitHub API, fetch raw file
+   contents, distill to an evidence summary. All client-side.
+   NOTE: we deliberately do NOT download the codeload zip — codeload.github.com
+   only sends `Access-Control-Allow-Origin: https://render.githubusercontent.com`,
+   so browsers block the fetch ("Failed to fetch"). api.github.com and
+   raw.githubusercontent.com both send `Access-Control-Allow-Origin: *`.
+   Pure functions are exported for testability. */
 
-export const MAX_TARBALL_BYTES = 50 * 1024 * 1024; // refuse absurd repos in-browser
 const SUMMARY_BUDGET = 24000; // chars of repo evidence sent to the LLM
+const MAX_FILES = 220; // cap on raw files fetched per repo
+const MAX_FILE_CHARS = 60000; // per-file slice kept in memory
+const FETCH_CONCURRENCY = 6;
 
 const TEXT_EXTS = new Set([
   "md", "markdown", "txt", "json", "yaml", "yml", "toml", "ini", "cfg",
@@ -81,42 +88,51 @@ export function buildSummary(fileMap) {
   return { summary: parts.join("\n"), files: paths.length, chars: used };
 }
 
-/** Browser: fetch tarball, unzip, distill. onProgress(phase, detail). */
+/** Browser: list repo files via the GitHub API, fetch raw contents, distill.
+    onProgress(phase, detail). Phases: "fetch" (repo+tree), "read" (files), "distill". */
 export async function fetchAndDistill({ owner, repo, branch }, onProgress) {
-  const ref = branch || "HEAD";
-  // codeload /zip/HEAD resolves to the default branch and returns a real zip
-  const url = `https://codeload.github.com/${owner}/${repo}/zip/${encodeURIComponent(ref)}`;
-  onProgress?.("fetch", `Downloading ${owner}/${repo}…`);
-  const res = await fetch(url);
-  if (res.status === 404) throw new Error("Repo not found or not public. Blueprint only reads public repos.");
-  if (!res.ok) throw new Error(`GitHub download failed (HTTP ${res.status}).`);
-  const len = Number(res.headers.get("content-length") || 0);
-  if (len > MAX_TARBALL_BYTES) throw new Error("Repo archive is over 50 MB — too big to analyze in the browser.");
-  const buf = await res.arrayBuffer();
-  if (buf.byteLength > MAX_TARBALL_BYTES) throw new Error("Repo archive is over 50 MB — too big to analyze in the browser.");
+  const api = `https://api.github.com/repos/${owner}/${repo}`;
+  onProgress?.("fetch", `Reading ${owner}/${repo}…`);
 
-  onProgress?.("unzip", "Unpacking archive…");
-  if (typeof JSZip === "undefined") throw new Error("JSZip failed to load from CDN. Check your connection and retry.");
-  const zip = await JSZip.loadAsync(buf);
-  const byRel = {};
-  for (const [name, entry] of Object.entries(zip.files)) {
-    if (entry.dir) continue;
-    byRel[name.split("/").slice(1).join("/")] = entry;
+  let ref = branch;
+  if (!ref) {
+    const r = await fetch(api);
+    if (r.status === 404) throw new Error("Repo not found or not public. Blueprint only reads public repos.");
+    if (!r.ok) throw new Error(`GitHub API error (HTTP ${r.status}).`);
+    ref = (await r.json()).default_branch || "main";
   }
-  const picked = pickFiles(Object.keys(byRel));
+
+  const t = await fetch(`${api}/git/trees/${encodeURIComponent(ref)}?recursive=1`);
+  if (t.status === 404) throw new Error("Repo not found or not public. Blueprint only reads public repos.");
+  if (!t.ok) throw new Error(`Couldn't list repo files (GitHub API HTTP ${t.status}).`);
+  const tree = await t.json();
+  const rels = (tree.tree || [])
+    .filter((e) => e && e.type === "blob" && e.path)
+    .map((e) => e.path);
+  const picked = pickFiles(rels);
 
   onProgress?.("read", `Reading ${picked.length} source files…`);
+  const enc = (p) => p.split("/").map(encodeURIComponent).join("/");
+  const rawBase = `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(ref)}`;
   const fileMap = {};
-  for (const rel of picked) {
-    const entry = byRel[rel];
-    if (!entry) continue;
-    try {
-      const text = await entry.async("string");
-      if (text.length > 60000) fileMap[rel] = text.slice(0, 60000);
-      else fileMap[rel] = text;
-    } catch { /* skip unreadable */ }
-    if (Object.keys(fileMap).length >= 220) break;
+  for (let i = 0; i < picked.length && Object.keys(fileMap).length < MAX_FILES; i += FETCH_CONCURRENCY) {
+    const batch = picked.slice(i, i + FETCH_CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(async (rel) => {
+        try {
+          const fr = await fetch(`${rawBase}/${enc(rel)}`);
+          if (!fr.ok) return null;
+          const text = await fr.text();
+          return [rel, text.length > MAX_FILE_CHARS ? text.slice(0, MAX_FILE_CHARS) : text];
+        } catch {
+          return null; // skip unreadable files
+        }
+      })
+    );
+    for (const r of results) if (r) fileMap[r[0]] = r[1];
+    onProgress?.("read", `Reading source files… ${Math.min(i + FETCH_CONCURRENCY, picked.length)}/${picked.length}`);
   }
+
   onProgress?.("distill", "Distilling repo evidence…");
   const { summary, files, chars } = buildSummary(fileMap);
   return { summary, stats: { files, chars } };
