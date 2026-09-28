@@ -7,11 +7,9 @@ import { renderDiagram, findNode, relatedEdges, cardsHtml } from "./render.js";
 
 const $ = (id) => document.getElementById(id);
 const LS_KEY = "blueprint_gemini_key";
-const LS_THEME = "blueprint_theme";
 
 const state = {
   spec: null, type: "architecture", repoLabel: "", repoSummary: "",
-  theme: localStorage.getItem(LS_THEME) || "dark",
   rendering: false,
 };
 
@@ -45,8 +43,8 @@ function apiKey() { return (localStorage.getItem(LS_KEY) || "").trim(); }
 
 /* ---------- render into viewport ---------- */
 function mountDiagram() {
-  const { spec, theme } = state;
-  const out = renderDiagram(spec, theme);
+  const { spec } = state;
+  const out = renderDiagram(spec);
   const vp = $("viewport");
   vp.innerHTML = `<div class="svgwrap">${out.svg}</div>`;
   vp.dataset.w = out.W; vp.dataset.h = out.H;
@@ -60,13 +58,6 @@ function mountDiagram() {
   $("stage").classList.remove("hidden");
   $("refinebar").classList.remove("hidden");
   wireNodeClicks();
-  applyTheme();
-}
-
-function applyTheme() {
-  document.documentElement.dataset.theme = state.theme;
-  $("theme-btn").textContent = state.theme === "dark" ? "☾ Dark" : "☀ Light";
-  localStorage.setItem(LS_THEME, state.theme);
 }
 
 /* pan & zoom on the svg via viewBox */
@@ -227,7 +218,7 @@ function exportPNG() {
     const c = document.createElement("canvas");
     c.width = w * 2; c.height = h * 2;
     const ctx = c.getContext("2d");
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--bg") || "#0c1322";
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--paper") || "#fbf8f1";
     ctx.fillRect(0, 0, c.width, c.height);
     ctx.drawImage(img, 0, 0, c.width, c.height);
     URL.revokeObjectURL(url);
@@ -259,7 +250,6 @@ function toast(msg) {
 
 /* ---------- wire up ---------- */
 document.addEventListener("DOMContentLoaded", () => {
-  applyTheme();
   $("generate-btn").addEventListener("click", () => runGenerate(null));
   $("refine-btn").addEventListener("click", () => {
     const v = $("refine-input").value.trim();
@@ -273,11 +263,6 @@ document.addEventListener("DOMContentLoaded", () => {
   $("settings-save").addEventListener("click", () => closeSettings(true));
   $("settings-cancel").addEventListener("click", () => closeSettings(false));
   $("settings-modal").addEventListener("click", (e) => { if (e.target.id === "settings-modal") closeSettings(false); });
-  $("theme-btn").addEventListener("click", () => {
-    state.theme = state.theme === "dark" ? "light" : "dark";
-    applyTheme();
-    if (state.spec) mountDiagram();
-  });
   $("zoom-in").addEventListener("click", () => { if (view) zoomAt(1 / 1.25, view.x + view.w / 2, view.y + view.h / 2); });
   $("zoom-out").addEventListener("click", () => { if (view) zoomAt(1.25, view.x + view.w / 2, view.y + view.h / 2); });
   $("zoom-reset").addEventListener("click", resetView);

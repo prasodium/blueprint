@@ -4,33 +4,25 @@
    against the real vendored schemas before we ever get here).
    Pure functions: spec -> SVG string. No DOM needed, so it runs in node too. */
 
-export const THEMES = ["dark", "light"];
+export const THEMES = ["paper"];
 
-const PAL = {
-  dark: {
-    bg: "#0c1322", bg2: "#101a30", text: "#e9effc", muted: "#8fa1c4",
-    nodeFill: "#152036", nodeStroke: "#2b3c60", grid: "rgba(140,165,210,0.07)",
-    laneBand: "rgba(120,150,210,0.05)", edge: "#8494b8", edgeLblBg: "#0c1322",
-    boundary: "#24365c", boundaryLbl: "#a9bede",
-  },
-  light: {
-    bg: "#f6f8fc", bg2: "#ffffff", text: "#16213a", muted: "#5b6b8c",
-    nodeFill: "#ffffff", nodeStroke: "#c9d5ea", grid: "rgba(40,70,130,0.06)",
-    laneBand: "rgba(60,100,180,0.05)", edge: "#5b6b8c", edgeLblBg: "#f6f8fc",
-    boundary: "#b9c9e8", boundaryLbl: "#33456b",
-  },
+const PAPER = {
+  bg: "#ffffff", bg2: "#fbf8f1", text: "#1a1712", muted: "#6e6759",
+  nodeFill: "#ffffff", nodeStroke: "#1a1712", grid: "rgba(26,23,18,0.07)",
+  laneBand: "rgba(232,89,12,0.05)", edge: "#6e6759", edgeLblBg: "#ffffff",
+  boundary: "#a8a094", boundaryLbl: "#6e6759",
 };
 
 const TYPE_COLORS = {
-  frontend: "#38bdf8", backend: "#a78bfa", database: "#fbbf24",
-  cloud: "#22d3ee", security: "#fb7185", messagebus: "#fb923c",
-  external: "#94a3b8",
+  frontend: "#e8590c", backend: "#1a1712", database: "#6e6759",
+  cloud: "#a8a094", security: "#b23e00", messagebus: "#f08c00",
+  external: "#c9c2b2",
 };
 const STATE_COLORS = {
-  start: "#34d399", active: "#38bdf8", waiting: "#fbbf24",
-  decision: "#a78bfa", success: "#34d399", failure: "#fb7185",
+  start: "#e8590c", active: "#1a1712", waiting: "#a8a094",
+  decision: "#6e6759", success: "#e8590c", failure: "#b23e00",
 };
-const DOT_COLORS = { emerald: "#34d399", cyan: "#22d3ee", rose: "#fb7185", amber: "#fbbf24" };
+const DOT_COLORS = { emerald: "#e8590c", cyan: "#6e6759", rose: "#b23e00", amber: "#f08c00" };
 
 export function esc(s) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -41,21 +33,19 @@ function fit(s, maxChars) {
   if (s.length <= maxChars) return s;
   return s.slice(0, Math.max(0, maxChars - 1)) + "…";
 }
-const tcol = (t) => TYPE_COLORS[t] || "#8fa1c4";
+const tcol = (t) => TYPE_COLORS[t] || "#6e6759";
 
 function edgeStyle(variant, pal) {
   switch (variant) {
-    case "emphasis": return { stroke: "#e9effc", dark: "#16213a", width: 2.6, dash: "", op: 1 };
-    case "security": return { stroke: "#fb7185", width: 2, dash: "", op: 1 };
+    case "emphasis": return { stroke: "#1a1712", width: 2.6, dash: "", op: 1 };
+    case "security": return { stroke: "#b23e00", width: 2, dash: "", op: 1 };
     case "dashed": return { stroke: pal.edge, width: 1.8, dash: "7 5", op: 0.9 };
     case "return": return { stroke: pal.muted, width: 1.6, dash: "5 4", op: 0.85 };
     default: return { stroke: pal.edge, width: 1.8, dash: "", op: 1 };
   }
 }
-function edgeColor(variant, pal, theme) {
-  const s = edgeStyle(variant, pal);
-  if (variant === "emphasis") return theme === "dark" ? "#f2f6ff" : "#1c2a4a";
-  return s.stroke;
+function edgeColor(variant, pal) {
+  return edgeStyle(variant, pal).stroke;
 }
 
 /* Build a smooth path through pts [[x,y],...]; returns {d, angle} where angle
@@ -112,11 +102,11 @@ function autoSides(a, b) {
   return dy >= 0 ? ["bottom", "top"] : ["top", "bottom"];
 }
 
-function drawEdge(pal, theme, { p1, p2, via, label, labelAt, labelDy, variant }) {
+function drawEdge(pal, { p1, p2, via, label, labelAt, labelDy, variant }) {
   const pts = [p1, ...(via || []), p2];
   const { d, angle } = smoothPath(pts);
   const st = edgeStyle(variant, pal);
-  const color = edgeColor(variant, pal, theme);
+  const color = edgeColor(variant, pal);
   let lx, ly;
   if (labelAt) { [lx, ly] = labelAt; }
   else {
@@ -128,10 +118,10 @@ function drawEdge(pal, theme, { p1, p2, via, label, labelAt, labelDy, variant })
   return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${st.width}" ` +
     `${st.dash ? `stroke-dasharray="${st.dash}"` : ""} opacity="${st.op}" stroke-linecap="round"/>` +
     arrowhead(p2[0], p2[1], angle, color) +
-    (label ? edgeLabel(lx, ly, label, pal, variant === "security" ? "#fb7185" : null) : "");
+    (label ? edgeLabel(lx, ly, label, pal, variant === "security" ? "#b23e00" : null) : "");
 }
 
-function nodeBox(pal, theme, { x, y, w, h, label, sublabel, tag, accent, nodeId, dim }) {
+function nodeBox(pal, { x, y, w, h, label, sublabel, tag, accent, nodeId, dim }) {
   const cx = x + w / 2;
   const labelChars = Math.max(6, Math.floor((w - 20) / 7));
   const subChars = Math.max(6, Math.floor((w - 20) / 6));
@@ -146,12 +136,12 @@ function nodeBox(pal, theme, { x, y, w, h, label, sublabel, tag, accent, nodeId,
 
 function svgOpen(w, h, pal) {
   return `<svg id="bp-svg" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" ` +
-    `viewBox="0 0 ${w} ${h}" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">` +
+    `viewBox="0 0 ${w} ${h}" font-family="'"'JetBrains Mono'"', ui-monospace, Menlo, Consolas, monospace">` +
     `<rect width="${w}" height="${h}" fill="${pal.bg}"/>`;
 }
 
 /* ---------------- architecture ---------------- */
-function renderArchitecture(spec, pal, theme) {
+function renderArchitecture(spec, pal) {
   const comps = spec.components || [];
   const boxes = {};
   // auto-layout fallback if the model skipped positions
@@ -191,7 +181,7 @@ function renderArchitecture(spec, pal, theme) {
     const a = boxes[c.from], b = boxes[c.to];
     if (!a || !b) continue;
     const [fs, ts] = (c.fromSide && c.toSide) ? [c.fromSide, c.toSide] : autoSides(a, b);
-    edges += drawEdge(pal, theme, {
+    edges += drawEdge(pal, {
       p1: anchorOf(a, fs), p2: anchorOf(b, ts), via: c.via,
       label: c.label, labelAt: c.labelAt, labelDy: c.labelDy, variant: c.variant,
     });
@@ -199,20 +189,20 @@ function renderArchitecture(spec, pal, theme) {
   s += edges;
   for (const c of comps) {
     const b = boxes[c.id];
-    s += nodeBox(pal, theme, {
+    s += nodeBox(pal, {
       x: b.x, y: b.y, w: b.w, h: b.h, label: c.label, sublabel: c.sublabel,
       tag: c.tag, accent: tcol(c.type), nodeId: c.id,
     });
   }
   const cards = (spec.cards || []).map((card) => ({
-    dot: DOT_COLORS[card.dot] || "#8fa1c4",
+    dot: DOT_COLORS[card.dot] || "#6e6759",
     title: card.title, items: card.items || [],
   }));
   return { svg: svgOpen(W, H, pal) + s + "</svg>", W, H, cards };
 }
 
 /* ---------------- workflow / lifecycle (lane grids) ---------------- */
-function laneGrid(spec, nodes, pal, theme, opts) {
+function laneGrid(spec, nodes, pal, opts) {
   const lanes = spec.lanes || [];
   const laneH = opts.laneH || 128, topPad = (spec.phases && spec.phases.length ? 46 : 18);
   const maxCol = Math.max(0, ...nodes.map((n) => n.col || 0));
@@ -255,9 +245,9 @@ function laneGrid(spec, nodes, pal, theme, opts) {
   return { s, boxes, W, H, laneIdx };
 }
 
-function renderWorkflow(spec, pal, theme) {
+function renderWorkflow(spec, pal) {
   const nodes = spec.nodes || [];
-  const g = laneGrid(spec, nodes, pal, theme, { laneH: 132, colW: 218, nodeW: 160, nodeH: 68 });
+  const g = laneGrid(spec, nodes, pal, { laneH: 132, colW: 218, nodeW: 160, nodeH: 68 });
   const mainSet = new Set(spec.mainPath || []);
   let s = g.s;
   for (const e of spec.edges || []) {
@@ -267,11 +257,11 @@ function renderWorkflow(spec, pal, theme) {
     const p1 = sameCol ? anchorOf(a, "bottom") : anchorOf(a, "right");
     const p2 = sameCol ? anchorOf(b, "top") : anchorOf(b, "left");
     const variant = e.variant || (mainSet.has(e.from) && mainSet.has(e.to) ? "emphasis" : "default");
-    s += drawEdge(pal, theme, { p1, p2, label: e.label, variant });
+    s += drawEdge(pal, { p1, p2, label: e.label, variant });
   }
   for (const n of nodes) {
     const b = g.boxes[n.id];
-    s += nodeBox(pal, theme, {
+    s += nodeBox(pal, {
       x: b.x, y: b.y, w: b.w, h: b.h, label: n.label, sublabel: n.sublabel,
       tag: n.tag, accent: tcol(n.type), nodeId: n.id,
     });
@@ -279,9 +269,9 @@ function renderWorkflow(spec, pal, theme) {
   return { svg: svgOpen(g.W, g.H, pal) + s + "</svg>", W: g.W, H: g.H, cards: [] };
 }
 
-function renderLifecycle(spec, pal, theme) {
+function renderLifecycle(spec, pal) {
   const states = spec.states || [];
-  const g = laneGrid(spec, states, pal, theme, { laneH: 138, colW: 225, nodeW: 168, nodeH: 70 });
+  const g = laneGrid(spec, states, pal, { laneH: 138, colW: 225, nodeW: 168, nodeH: 70 });
   let s = g.s;
   for (const t of spec.transitions || []) {
     const a = g.boxes[t.from], b = g.boxes[t.to];
@@ -297,12 +287,12 @@ function renderLifecycle(spec, pal, theme) {
       p1 = sameCol ? anchorOf(a, "bottom") : anchorOf(a, "right");
       p2 = sameCol ? anchorOf(b, "top") : anchorOf(b, "left");
     }
-    s += drawEdge(pal, theme, { p1, p2, via, label: t.label, variant: t.variant });
+    s += drawEdge(pal, { p1, p2, via, label: t.label, variant: t.variant });
   }
   for (const st of states) {
     const b = g.boxes[st.id];
     const accent = STATE_COLORS[st.type] || tcol("backend");
-    s += nodeBox(pal, theme, {
+    s += nodeBox(pal, {
       x: b.x, y: b.y, w: b.w, h: b.h, label: st.label, sublabel: st.sublabel,
       tag: st.tag || st.type, accent, nodeId: st.id,
     });
@@ -314,7 +304,7 @@ function renderLifecycle(spec, pal, theme) {
 }
 
 /* ---------------- sequence ---------------- */
-function renderSequence(spec, pal, theme) {
+function renderSequence(spec, pal) {
   const parts = spec.participants || [];
   const msgs = spec.messages || [];
   const vb = spec.meta && spec.meta.viewBox;
@@ -355,19 +345,19 @@ function renderSequence(spec, pal, theme) {
     const x1 = X(fi), x2 = X(ti), y = m.y;
     const leftToRight = x2 >= x1;
     const sx = leftToRight ? x1 + 8 : x1 - 8, ex = leftToRight ? x2 - 8 : x2 + 8;
-    const color = edgeColor(m.variant, pal, theme);
+    const color = edgeColor(m.variant, pal);
     const st = edgeStyle(m.variant, pal);
     const mx = (sx + ex) / 2;
     s += `<path d="M ${sx} ${y} C ${mx} ${y}, ${mx} ${y}, ${ex} ${y}" fill="none" stroke="${color}" ` +
       `stroke-width="${st.width}" ${st.dash ? `stroke-dasharray="${st.dash}"` : ""} opacity="${st.op}"/>` +
       arrowhead(ex, y, leftToRight ? 0 : Math.PI, color, 8) +
-      edgeLabel((sx + ex) / 2, y - 7, m.label, pal, m.variant === "security" ? "#fb7185" : null);
+      edgeLabel((sx + ex) / 2, y - 7, m.label, pal, m.variant === "security" ? "#b23e00" : null);
   }
   return { svg: svgOpen(W, H, pal) + s + "</svg>", W, H, cards: [] };
 }
 
 /* ---------------- dataflow ---------------- */
-function renderDataflow(spec, pal, theme) {
+function renderDataflow(spec, pal) {
   const stages = spec.stages || [];
   const nodes = spec.nodes || [];
   const stageW = 225, rowH = 135, leftPad = 70, topPad = 70;
@@ -392,7 +382,7 @@ function renderDataflow(spec, pal, theme) {
     const a = boxes[f.from], b = boxes[f.to];
     if (!a || !b) continue;
     const [fs, ts] = (f.fromSide && f.toSide) ? [f.fromSide, f.toSide] : autoSides(a, b);
-    s += drawEdge(pal, theme, {
+    s += drawEdge(pal, {
       p1: anchorOf(a, fs), p2: anchorOf(b, ts), via: f.via,
       label: f.label, labelAt: f.labelAt, variant: f.variant,
     });
@@ -403,7 +393,7 @@ function renderDataflow(spec, pal, theme) {
   }
   for (const nd of nodes) {
     const b = boxes[nd.id];
-    s += nodeBox(pal, theme, {
+    s += nodeBox(pal, {
       x: b.x, y: b.y, w: b.w, h: b.h, label: nd.label, sublabel: nd.sublabel,
       tag: nd.tag, accent: tcol(nd.type), nodeId: nd.id,
     });
@@ -420,12 +410,11 @@ const RENDERERS = {
   lifecycle: renderLifecycle,
 };
 
-export function renderDiagram(spec, theme = "dark") {
-  const t = THEMES.includes(theme) ? theme : "dark";
-  const pal = PAL[t];
+export function renderDiagram(spec) {
+  const pal = PAPER;
   const fn = RENDERERS[spec.diagram_type];
   if (!fn) throw new Error("No renderer for diagram type: " + spec.diagram_type);
-  return { ...fn(spec, pal, t), theme: t, title: (spec.meta && spec.meta.title) || "Untitled" };
+  return { ...fn(spec, pal), theme: "paper", title: (spec.meta && spec.meta.title) || "Untitled" };
 }
 
 /** Find a node/state/participant/component by id for the detail panel. */
