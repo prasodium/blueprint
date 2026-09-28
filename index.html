@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=8">
+  <link rel="stylesheet" href="css/style.css?v=9">
   <script src="js/ajv2020.bundle.js" defer></script>
 </head>
 <body>
@@ -56,7 +56,7 @@
           <button class="btn primary" id="generate-btn">Generate -></button>
           <span id="key-status"></span>
         </div>
-        <p class="hint">Needs a free Gemini API key — <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">get one here</a>, paste it in [ settings ]. It never leaves your browser.</p>
+        <p class="hint">Needs a free API key — pick a provider in [ settings ]. It never leaves your browser.</p>
       </div>
 
       <div id="progress" class="hidden"></div>
@@ -106,20 +106,28 @@
       <p class="kicker">§ HOW IT WORKS</p>
       <div class="steps">
         <div class="step"><span class="n">01</span><h4>Paste a URL</h4><p>Blueprint fetches the public repo and distills the code down to what matters.</p></div>
-        <div class="step"><span class="n">02</span><h4>Gemini draws</h4><p>Your free API key sends that evidence to Gemini. It returns a typed diagram spec — nothing invented.</p></div>
+        <div class="step"><span class="n">02</span><h4>AI draws</h4><p>Your API key sends that evidence to the model. It returns a typed diagram spec — nothing invented.</p></div>
         <div class="step"><span class="n">03</span><h4>Verified, then rendered</h4><p>The spec is validated against the Archify schemas before a single pixel is drawn. Then: pan, zoom, click nodes, export.</p></div>
       </div>
-      <p class="cost"><strong>$0</strong> — static page · your free Gemini key · no backend · no tracking</p>
+      <p class="cost"><strong>$0</strong> — static page · your free API key · no backend · no tracking</p>
     </section>
   </main>
 
   <div id="settings-modal" class="modal-back hidden">
     <div class="modal">
       <h3>[ settings ]</h3>
-      <p>Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Paste it once — it stays in this browser's localStorage and goes only to Google's API. Blueprint has no backend.</p>
+      <p id="provider-hint"></p>
       <div class="field">
-        <label class="lbl" for="api-key-input">> gemini api key</label>
-        <input type="password" id="api-key-input" placeholder="AIza…" autocomplete="off" spellcheck="false">
+        <label class="lbl" for="provider-select">> provider</label>
+        <select id="provider-select"></select>
+      </div>
+      <div class="field" id="key-field">
+        <label class="lbl" for="api-key-input" id="key-label">> api key</label>
+        <input type="password" id="api-key-input" placeholder="" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label class="lbl" for="model-input">> model (optional override)</label>
+        <input type="text" id="model-input" placeholder="" autocomplete="off" spellcheck="false">
       </div>
       <div class="modal-actions">
         <button class="btn ghost" id="settings-cancel">cancel</button>
@@ -141,13 +149,18 @@
       const upd = () => {
         const el = document.getElementById("key-status");
         if (!el) return;
-        const has = !!(localStorage.getItem("blueprint_gemini_key") || "").trim();
-        el.className = has ? "key-ok" : "key-missing";
-        el.textContent = has ? "[api key set]" : "[api key missing]";
+        const pid = localStorage.getItem("blueprint_provider") || "gemini";
+        let keys = {};
+        try { keys = JSON.parse(localStorage.getItem("blueprint_keys") || "{}"); } catch (e) {}
+        let has = !!(keys[pid] || "").trim();
+        if (!has && pid === "gemini") has = !!(localStorage.getItem("blueprint_gemini_key") || "").trim();
+        const ok = pid === "pollinations" || has;
+        el.className = ok ? "key-ok" : "key-missing";
+        el.textContent = ok ? "[api key set]" : "[api key missing]";
       };
       upd(); setInterval(upd, 1500);
     });
   </script>
-  <script type="module" src="js/app.js?v=8"></script>
+  <script type="module" src="js/app.js?v=9"></script>
 </body>
 </html>
