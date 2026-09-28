@@ -1,12 +1,14 @@
 /* Blueprint — app orchestration. UI wiring, pipeline, refine chat, export, settings. */
 import { parseGitHubUrl, fetchAndDistill } from "./github.js";
 import { buildSystemPrompt, buildUserPrompt, buildRefinePrompt } from "./prompts.js";
-import { generateSpec } from "./gemini.js";
+import {
+  generateSpec, PROVIDERS, getProvider, currentProviderId, setProviderId,
+  providerKey, setProviderKey, providerModel, setProviderModel, providerReady,
+} from "./providers.js";
 import { validateSpec, browserFetchJson } from "./validate.js";
 import { renderDiagram, findNode, relatedEdges, cardsHtml } from "./render.js";
 
 const $ = (id) => document.getElementById(id);
-const LS_KEY = "blueprint_gemini_key";
 
 const state = {
   spec: null, type: "architecture", repoLabel: "", repoSummary: "",
@@ -38,8 +40,6 @@ function showError(title, errors) {
   box.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 function hideError() { $("errorbox").classList.add("hidden"); $("errorbox").innerHTML = ""; }
-
-function apiKey() { return (localStorage.getItem(LS_KEY) || "").trim(); }
 
 /* ---------- render into viewport ---------- */
 function mountDiagram() {
@@ -135,7 +135,14 @@ async function runGenerate(refineInstruction) {
   const urlRaw = $("repo-url").value;
   const parsed = parseGitHubUrl(urlRaw);
   if (!parsed.ok && !refineInstruction) { showError("Bad repo URL", [parsed.error]); return; }
-  if (!apiKey()) { showError("No API key", ['Open <b>Settings</b> and paste your free Gemini key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.']); return; }
+  const pid = currentProviderId();
+  const prov = getProvider(pid);
+  const pkey = providerKey(pid);
+  const pmodel = providerModel(pid);
+  if (prov.needsKey && !pkey) {
+    showError("No API key", [`Open <b>Settings</b>, pick <b>${prov.label}</b>, and paste your key${prov.keyUrl ? ` from <a href="${prov.keyUrl}" target="_blank" rel="noopener">${prov.keyUrl.replace(/^https?:\/\//, "")}</a>` : ""}.`]);
+    return;
+  }
 
   state.rendering = true;
   $("generate-btn").disabled = true;
@@ -149,9 +156,11 @@ async function runGenerate(refineInstruction) {
       });
       state.repoSummary = summary;
       state.repoLabel = `${parsed.owner}/${parsed.repo}`;
-      setProgress("generate", `Asking Gemini · ${stats.files} files distilled`);
+      setProgress("generate", `Asking ${prov.label} · ${stats.files} files distilled`);
       const { spec } = await generateSpec({
-        apiKey: apiKey(),
+        providerId: pid,
+        apiKey: pkey,
+        model: pmodel,
         systemPrompt: buildSystemPrompt(state.type),
         userPrompt: buildUserPrompt({
           type: state.type, owner: parsed.owner, repo: parsed.repo,
@@ -163,7 +172,9 @@ async function runGenerate(refineInstruction) {
     } else {
       setProgress("generate", "Refining diagram…");
       const { spec } = await generateSpec({
-        apiKey: apiKey(),
+        providerId: pid,
+        apiKey: pkey,
+        model: pmodel,
         systemPrompt: buildSystemPrompt(state.type),
         userPrompt: buildRefinePrompt({
           type: state.type,
@@ -229,14 +240,49 @@ function exportPNG() {
 }
 
 /* ---------- settings ---------- */
+function refreshSettingsFields() {
+  const pid = $("provider-select").value;
+  const p = getProvider(pid);
+  const keyField = $("key-field");
+  keyField.style.display = p.needsKey ? "" : "none";
+  $("key-label").textContent = `> ${p.keyName.toLowerCase()}`;
+  $("api-key-input").placeholder = p.keyPlaceholder;
+  $("api-key-input").value = providerKey(pid);
+  const modelInput = $("model-input");
+  modelInput.placeholder = p.defaultModel;
+  modelInput.value = (() => {
+    try {
+      const m = JSON.parse(localStorage.getItem("blueprint_models") || "{}")[pid];
+      return (m || "").trim();
+    } catch { return ""; }
+  })();
+  $("provider-hint").innerHTML = p.needsKey
+    ? `Get a key at <a href="${p.keyUrl}" target="_blank" rel="noopener">${p.keyUrl.replace(/^https?:\/\//, "")}</a> — ${p.hint} Paste it once; it stays in this browser's localStorage and goes only to ${p.label}. Blueprint has no backend.`
+    : `${p.hint} Requests go straight to ${p.label}. Blueprint has no backend.`;
+}
 function openSettings() {
-  $("api-key-input").value = apiKey();
+  const sel = $("provider-select");
+  if (!sel.options.length) {
+    for (const p of PROVIDERS) {
+      const o = document.createElement("option");
+      o.value = p.id; o.textContent = p.label;
+      sel.appendChild(o);
+    }
+  }
+  sel.value = currentProviderId();
+  refreshSettingsFields();
   $("settings-modal").classList.remove("hidden");
 }
 function closeSettings(save) {
   if (save) {
-    localStorage.setItem(LS_KEY, $("api-key-input").value.trim());
-    toast(localStorage.getItem(LS_KEY) ? "API key saved in this browser only." : "API key cleared.");
+    const pid = $("provider-select").value;
+    setProviderId(pid);
+    setProviderKey(pid, $("api-key-input").value);
+    setProviderModel(pid, $("model-input").value);
+    const p = getProvider(pid);
+    toast(p.needsKey
+      ? (providerKey(pid) ? `${p.label} key saved in this browser only.` : `${p.label} key cleared.`)
+      : `${p.label} selected — no key needed.`);
   }
   $("settings-modal").classList.add("hidden");
 }
@@ -260,6 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   $("refine-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("refine-btn").click(); });
   $("settings-btn").addEventListener("click", openSettings);
+  $("provider-select").addEventListener("change", refreshSettingsFields);
   $("settings-save").addEventListener("click", () => closeSettings(true));
   $("settings-cancel").addEventListener("click", () => closeSettings(false));
   $("settings-modal").addEventListener("click", (e) => { if (e.target.id === "settings-modal") closeSettings(false); });
@@ -282,5 +329,5 @@ document.addEventListener("DOMContentLoaded", () => {
     $("diagram-title").textContent = "";
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
-  if (!apiKey()) setTimeout(() => toast("Tip: add your free Gemini key in Settings to start."), 800);
+  if (!providerReady()) setTimeout(() => toast("Tip: pick a provider and add an API key in Settings to start."), 800);
 });
