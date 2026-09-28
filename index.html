@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blueprint — your repo's blueprint in seconds</title>
+  <meta name="description" content="Paste a GitHub repo URL and get an interactive architecture diagram in seconds. Free, no signup, runs entirely in your browser.">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+  <script src="js/ajv2020.bundle.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <div class="logo">B</div>
+      <div class="brand">
+        <h1>Blueprint</h1>
+        <p>your repo's blueprint in seconds</p>
+      </div>
+      <div class="top-actions">
+        <button class="btn ghost" id="theme-btn" title="Toggle dark/light">☾ Dark</button>
+        <button class="btn" id="settings-btn">⚙ Settings</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h2>Understand any repo <span class="grad">at a glance</span></h2>
+      <p class="sub">Paste a public GitHub URL. Blueprint reads the code, distills what matters, and draws you an interactive architecture, sequence, workflow, data-flow, or lifecycle diagram.</p>
+
+      <div class="panel generator">
+        <div class="field">
+          <label class="lbl" for="repo-url">GitHub repo URL</label>
+          <input type="text" id="repo-url" placeholder="https://github.com/owner/repo" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label class="lbl" for="diagram-type">Diagram type</label>
+            <select id="diagram-type">
+              <option value="architecture">Architecture — components &amp; services</option>
+              <option value="sequence">Sequence — API call chains</option>
+              <option value="workflow">Workflow — processes &amp; pipelines</option>
+              <option value="dataflow">Data flow — pipelines &amp; lineage</option>
+              <option value="lifecycle">Lifecycle — states &amp; transitions</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="lbl" for="user-note">Focus <span style="text-transform:none;font-weight:400">(optional)</span></label>
+            <input type="text" id="user-note" placeholder='e.g. "focus on the auth flow"'>
+          </div>
+        </div>
+        <div class="cta-row">
+          <button class="btn primary" id="generate-btn">Generate blueprint →</button>
+          <span id="key-status"></span>
+        </div>
+        <p class="hint">Needs a free Gemini API key (one-time, 30 seconds) — <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">get one at Google AI Studio</a>, then paste it in ⚙ Settings. The key never leaves your browser.</p>
+      </div>
+
+      <div id="progress" class="hidden"></div>
+      <div id="errorbox" class="hidden"></div>
+    </section>
+
+    <section id="diagram-section">
+      <div class="dhead">
+        <h3 id="diagram-title"></h3>
+        <span class="meta" id="diagram-meta"></span>
+      </div>
+      <div id="toolbar" class="hidden">
+        <button class="btn ghost" id="zoom-in">＋</button>
+        <button class="btn ghost" id="zoom-out">－</button>
+        <button class="btn ghost" id="zoom-reset">Reset view</button>
+        <span class="sep"></span>
+        <button class="btn ghost" id="export-png">PNG</button>
+        <button class="btn ghost" id="export-svg">SVG</button>
+        <button class="btn ghost" id="export-json">JSON</button>
+        <span class="sep"></span>
+        <button class="btn ghost" id="new-btn">← New diagram</button>
+      </div>
+      <div class="stage hidden" id="stage">
+        <div id="viewport"></div>
+        <div id="nodedetail" class="hidden"></div>
+      </div>
+      <div id="cards" class="hidden"></div>
+
+      <div id="refinebar" class="hidden">
+        <div class="panel">
+          <label class="lbl" for="refine-input">Refine in chat</label>
+          <div class="refine-row">
+            <input type="text" id="refine-input" placeholder='e.g. "add Redis", "highlight the cache-miss path"'>
+            <button class="btn primary" id="refine-btn">Refine</button>
+          </div>
+          <div class="examples">
+            Try:
+            <button data-r="add the missing database component">add the database</button>
+            <button data-r="highlight the primary request path">highlight the request path</button>
+            <button data-r="remove the least important components">simplify it</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="how">
+      <h3>How it works</h3>
+      <p class="lead">No servers, no signups, no bills. Everything happens in your browser.</p>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><h4>You paste a repo URL</h4><p>Blueprint downloads the public repo archive and distills it: file tree, README, manifests, and entry-point files — trimmed to a tight evidence budget.</p></div>
+        <div class="step"><span class="n">2</span><h4>Gemini draws the spec</h4><p>Your free Gemini key sends that evidence to the model with strict authoring rules. It returns a typed diagram spec — components, edges, and nothing invented.</p></div>
+        <div class="step"><span class="n">3</span><h4>Verified, then rendered</h4><p>The spec is validated against the real Archify JSON schemas before a single pixel is drawn. Invalid output is rejected with a clear error, never rendered.</p></div>
+        <div class="step"><span class="n">4</span><h4>Explore &amp; export</h4><p>Pan, zoom, click any node for details, toggle dark/light, refine in chat, export PNG/SVG/JSON. Diagram format inspired by <a href="https://github.com/tt-a1i/archify" target="_blank" rel="noopener">Archify</a> (MIT).</p></div>
+      </div>
+      <p class="cost"><strong>$0</strong> — static hosting · your free Gemini key · no backend · no database · no tracking</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>Blueprint — your repo's blueprint in seconds. Diagram spec format &amp; schemas: <a href="https://github.com/tt-a1i/archify" target="_blank" rel="noopener">tt-a1i/archify</a> (MIT).</span>
+      <span>Your API key stays in your browser's localStorage. Nothing is uploaded anywhere except the repo archive (public) and the prompt (to Google).</span>
+    </div>
+  </footer>
+
+  <div id="settings-modal" class="modal-back hidden">
+    <div class="modal">
+      <h3>⚙ Settings</h3>
+      <p>Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> (no credit card). Paste it once — it's stored only in this browser's localStorage and sent only to Google's API.</p>
+      <div class="field">
+        <label class="lbl" for="api-key-input">Gemini API key</label>
+        <input type="password" id="api-key-input" placeholder="AIza…" autocomplete="off" spellcheck="false">
+      </div>
+      <p class="privacy">🔒 Blueprint has no backend. The key is never sent to us (there is no "us" — it's a static page).</p>
+      <div class="modal-actions">
+        <button class="btn ghost" id="settings-cancel">Cancel</button>
+        <button class="btn primary" id="settings-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+
+  <script>
+    // example refine chips + key status (progressive enhancement before module loads)
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".examples button").forEach((b) =>
+        b.addEventListener("click", () => {
+          const i = document.getElementById("refine-input");
+          i.value = b.dataset.r; i.focus();
+        }));
+      const upd = () => {
+        const el = document.getElementById("key-status");
+        if (!el) return;
+        const has = !!(localStorage.getItem("blueprint_gemini_key") || "").trim();
+        el.className = has ? "key-ok" : "key-missing";
+        el.textContent = has ? "● API key set" : "○ API key not set";
+      };
+      upd(); setInterval(upd, 1500);
+    });
+  </script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
